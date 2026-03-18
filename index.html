@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
-:root{--navy:#0a0f1e;--teal:#00c9b1;--gold:#f4c430;--offwhite:#f0ede6;--card:#111827;--border:#1e2d40;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--muted:#6b7280}
+:root{--navy:#0a0f1e;--teal:#00c9b1;--gold:#f4c430;--offwhite:#f0ede6;--card:#111827;--border:#1e2d40;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--muted:#6b7280;--purple:#8b5cf6}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;min-height:100vh}
 .header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,15,30,0.95);backdrop-filter:blur(10px);z-index:100}
@@ -22,17 +22,17 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
 .merchant-info h2{font-size:16px;font-weight:700}.merchant-info p{font-size:12px;color:var(--teal);font-family:'Space Mono',monospace;margin-top:2px}
 .merchant-avatar{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--teal),#0099a0);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--navy)}
 .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--navy);position:sticky;top:69px;z-index:90}
-.tab{flex:1;padding:14px 8px;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase}
 .tab.active{color:var(--teal);border-bottom-color:var(--teal)}
-.tab-icon{font-size:16px;display:block;margin-bottom:2px}
+.tab-icon{font-size:15px;display:block;margin-bottom:2px}
 .content{padding:20px;max-width:480px;margin:0 auto}
 .amount-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 20px;margin-bottom:16px}
 .amount-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
 .amount-display{display:flex;align-items:baseline;gap:8px;margin-bottom:16px}
 .currency-symbol{font-size:28px;font-weight:800;color:var(--teal);font-family:'Space Mono',monospace}
-.amount-input{background:transparent;border:none;outline:none;font-size:52px;font-weight:800;color:var(--offwhite);font-family:'Space Mono',monospace;width:100%;caret-color:var(--teal)}
+.amount-input{background:transparent;border:none;outline:none;font-size:52px;font-weight:800;color:var(--offwhite);font-family:'Space Mono',monospace;width:100%}
 .amount-input::placeholder{color:var(--border)}
-.ref-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--offwhite);font-family:'Syne',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s}
+.ref-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--offwhite);font-family:'Syne',sans-serif;font-size:14px;outline:none}
 .ref-input:focus{border-color:var(--teal)}.ref-input::placeholder{color:var(--muted)}
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
 .num-btn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;font-size:20px;font-weight:700;color:var(--offwhite);font-family:'Space Mono',monospace;cursor:pointer;transition:all 0.15s;text-align:center}
@@ -41,14 +41,13 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
 .pay-btn{width:100%;padding:18px;border-radius:14px;border:none;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px}
 .pay-btn.online-pay{background:linear-gradient(135deg,var(--teal),#009e8e);color:var(--navy)}
 .pay-btn.offline-pay{background:linear-gradient(135deg,var(--gold),#e6a800);color:var(--navy)}
-.pay-btn:active{transform:scale(0.98)}.pay-btn:disabled{opacity:0.5}
+.pay-btn:active{transform:scale(0.98)}
 .queue-banner{background:rgba(244,196,48,0.1);border:1px solid rgba(244,196,48,0.3);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .queue-info{font-size:13px;color:var(--gold);font-weight:600}
 .queue-count{background:var(--gold);color:var(--navy);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:800;font-family:'Space Mono',monospace}
 .sync-now-btn{background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
 .section-title{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;margin-top:8px}
-.tx-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;animation:slideIn 0.3s ease}
-@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.tx-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .tx-left{display:flex;align-items:center;gap:12px}
 .tx-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
 .tx-icon.synced{background:rgba(34,197,94,0.15)}.tx-icon.pending{background:rgba(245,158,11,0.15)}
@@ -73,6 +72,33 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
 .qr-display{background:white;border-radius:16px;padding:20px;margin:0 auto 20px;width:160px;height:160px;display:flex;align-items:center;justify-content:center;font-size:70px}
 .modal-amount{font-size:32px;font-weight:800;font-family:'Space Mono',monospace;color:var(--teal);margin-bottom:20px}
 .modal-close{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--offwhite);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.ai-section{background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(0,201,177,0.05));border:1px solid rgba(139,92,246,0.3);border-radius:16px;padding:20px;margin-bottom:16px}
+.ai-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ai-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800}
+.ai-badge{background:#8b5cf6;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;font-family:'Space Mono',monospace}
+.ai-btn{background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:white;border:none;border-radius:10px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
+.ai-btn:disabled{opacity:0.5}
+.ai-response{background:rgba(0,0,0,0.3);border-radius:12px;padding:16px;margin-top:12px;display:none}
+.ai-response.show{display:block}
+.ai-response p{font-size:13px;line-height:1.7}
+.ai-thinking{display:flex;align-items:center;gap:8px;color:#8b5cf6;font-size:12px;font-weight:600}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:#8b5cf6;animation:aiPulse 1s infinite}
+.ai-dot:nth-child(2){animation-delay:0.2s}.ai-dot:nth-child(3){animation-delay:0.4s}
+@keyframes aiPulse{0%,100%{opacity:0.3}50%{opacity:1}}
+.chat-container{display:flex;flex-direction:column;height:calc(100vh - 220px);min-height:400px}
+.chat-messages{flex:1;overflow-y:auto;padding-bottom:16px}
+.chat-msg{margin-bottom:12px;display:flex;flex-direction:column}
+.chat-msg.user{align-items:flex-end}.chat-msg.ai{align-items:flex-start}
+.chat-bubble{max-width:85%;padding:12px 16px;border-radius:16px;font-size:13px;line-height:1.6}
+.chat-msg.user .chat-bubble{background:linear-gradient(135deg,var(--teal),#009e8e);color:var(--navy);font-weight:600;border-bottom-right-radius:4px}
+.chat-msg.ai .chat-bubble{background:var(--card);border:1px solid var(--border);color:var(--offwhite);border-bottom-left-radius:4px}
+.chat-input-area{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border)}
+.chat-input{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;color:var(--offwhite);font-family:'Syne',sans-serif;font-size:14px;outline:none}
+.chat-input:focus{border-color:#8b5cf6}.chat-input::placeholder{color:var(--muted)}
+.chat-send{background:#8b5cf6;border:none;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
+.chat-send:disabled{opacity:0.5}
+.quick-prompts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.quick-btn{background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);color:#8b5cf6;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
 .hidden{display:none!important}
 </style>
 </head>
@@ -92,6 +118,7 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
   <div class="tab active" onclick="switchTab('pay',this)"><span class="tab-icon">💳</span>PAY</div>
   <div class="tab" onclick="switchTab('history',this)"><span class="tab-icon">📋</span>HISTORY</div>
   <div class="tab" onclick="switchTab('stats',this)"><span class="tab-icon">📊</span>STATS</div>
+  <div class="tab" onclick="switchTab('ai',this)"><span class="tab-icon">🤖</span>AI</div>
 </div>
 <div class="content" id="tab-pay">
   <div class="queue-banner hidden" id="queueBanner">
@@ -101,7 +128,7 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
   <div class="amount-section">
     <div class="amount-label">Amount to charge</div>
     <div class="amount-display"><span class="currency-symbol">R</span><input class="amount-input" id="amountInput" type="text" placeholder="0.00" readonly/></div>
-    <input class="ref-input" id="customerRef" type="text" placeholder="Customer name (optional)"/>
+    <input class="ref-input" id="customerRef" type="text" placeholder="Customer name or item (optional)"/>
   </div>
   <div class="numpad">
     <button class="num-btn" onclick="numPress('1')">1</button><button class="num-btn" onclick="numPress('2')">2</button><button class="num-btn" onclick="numPress('3')">3</button>
@@ -123,10 +150,30 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
     <div class="stat-card"><div class="stat-label">Synced</div><div class="stat-value teal" id="statSynced">0</div></div>
     <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value gold" id="statPending">0</div></div>
   </div>
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;">
-    <p style="font-size:13px;color:var(--muted);line-height:1.6;">PayDuka PoS works <strong style="color:var(--teal)">completely offline</strong>. Transactions queue locally and sync to Supabase automatically when connectivity returns. Built on PowerSync for Africa's informal economy.</p>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">
-      <div>🔗 PowerSync + Supabase</div><div style="margin-top:4px;">🌍 Africa's informal economy</div><div style="margin-top:4px;">⛓️ PDUKA Token on Polygon</div>
+  <div class="ai-section">
+    <div class="ai-header">
+      <div class="ai-title">🤖 AI Insight <span class="ai-badge">CLAUDE</span></div>
+      <button class="ai-btn" id="insightBtn" onclick="getQuickInsight()">✨ Analyse</button>
+    </div>
+    <div class="ai-response" id="aiInsightBox"><p id="aiInsightText"></p></div>
+  </div>
+</div>
+<div class="content hidden" id="tab-ai">
+  <div class="section-title">🤖 PayDuka AI Assistant</div>
+  <div class="quick-prompts">
+    <button class="quick-btn" onclick="sendQuick('How are my sales today?')">📈 Today's sales</button>
+    <button class="quick-btn" onclick="sendQuick('What should I restock?')">📦 Restock alert</button>
+    <button class="quick-btn" onclick="sendQuick('Give me a weekly sales summary')">📊 Weekly summary</button>
+    <button class="quick-btn" onclick="sendQuick('How can I grow my business?')">💡 Growth tips</button>
+    <button class="quick-btn" onclick="sendQuick('What are my peak trading hours?')">⏰ Peak hours</button>
+  </div>
+  <div class="chat-container">
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg ai"><div class="chat-bubble">👋 Hi! I'm your PayDuka AI assistant. I can analyse your sales, alert you on restocking, and give business insights. What would you like to know?</div></div>
+    </div>
+    <div class="chat-input-area">
+      <input class="chat-input" id="chatInput" type="text" placeholder="Ask about your business..." onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="chat-send" id="chatSend" onclick="sendChat()">➤</button>
     </div>
   </div>
 </div>
@@ -145,17 +192,18 @@ const SUPABASE_URL='https://ktjmilwrqpaxwertvnjq.supabase.co';
 const SUPABASE_KEY='sb_publishable_7JBBW3YFuQAPMqdnbdFi6g_jT7w9obI';
 let isOnline=navigator.onLine,currentAmount='',merchant=null,transactions=[],pendingQueue=[],sb=null;
 async function init(){
-  try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);await loadMerchant();await loadTransactions();}catch(e){showToast('Offline mode','warning');}
+  try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);await loadMerchant();await loadTransactions();}
+  catch(e){showToast('Offline mode','warning');}
   loadPending();updateUI();
-  window.addEventListener('online',()=>{isOnline=true;updateSyncBadge();syncNow();showToast('Back online — syncing!');});
-  window.addEventListener('offline',()=>{isOnline=false;updateSyncBadge();showToast('Offline — payments still work!','warning');});
+  window.addEventListener('online',()=>{isOnline=true;updateSyncBadge();syncNow();showToast('Back online!');});
+  window.addEventListener('offline',()=>{isOnline=false;updateSyncBadge();showToast('Offline — still works!','warning');});
 }
 async function loadMerchant(){
   const{data}=await sb.from('merchants').select('*').limit(1).single();
   if(data){merchant=data;document.getElementById('merchantName').textContent=data.store_name||data.name;document.getElementById('merchantPhone').textContent=data.phone||'';document.getElementById('merchantAvatar').textContent=(data.store_name||data.name).charAt(0).toUpperCase();}
 }
 async function loadTransactions(){
-  const{data}=await sb.from('transactions').select('*').order('created_at',{ascending:false}).limit(50);
+  const{data}=await sb.from('transactions').select('*').order('created_at',{ascending:false}).limit(100);
   if(data){transactions=data.map(t=>({...t,_synced:true}));renderTransactions();updateStats();}
 }
 function loadPending(){try{const s=localStorage.getItem('payduka_q');if(s)pendingQueue=JSON.parse(s);}catch(e){}updateQueueBanner();}
@@ -182,11 +230,51 @@ async function syncNow(){
   savePending();updateQueueBanner();renderTransactions();updateStats();
   if(!pendingQueue.length)showToast('✅ All synced!');
 }
-function updateSyncBadge(){
-  const b=document.getElementById('syncBadge'),t=document.getElementById('syncText'),p=document.getElementById('payBtn');
-  if(isOnline){b.className='sync-badge online';t.textContent='ONLINE';p.className='pay-btn online-pay';}
-  else{b.className='sync-badge offline';t.textContent='OFFLINE';p.className='pay-btn offline-pay';}
+function buildSalesContext(){
+  const all=[...pendingQueue,...transactions];
+  const total=all.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const today=new Date().toDateString();
+  const todayTx=all.filter(t=>new Date(t.created_at).toDateString()===today);
+  const todayTotal=todayTx.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  const items=all.map(t=>t.customer_ref).filter(Boolean);
+  const itemCounts={};items.forEach(i=>{itemCounts[i]=(itemCounts[i]||0)+1;});
+  const topItems=Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  return `Merchant: ${merchant?.store_name||merchant?.name||'Unknown'}\nTotal transactions: ${all.length}\nTotal revenue: R${total.toFixed(2)}\nToday transactions: ${todayTx.length}\nToday revenue: R${todayTotal.toFixed(2)}\nPending sync: ${pendingQueue.length}\nTop items: ${topItems.map(([k,v])=>`${k}(${v}x)`).join(', ')||'none'}\nRecent: ${all.slice(0,10).map(t=>`R${parseFloat(t.amount).toFixed(2)} ${t.customer_ref||''} ${new Date(t.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}`).join('; ')}`;
 }
+async function callClaude(msg,ctx){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`You are PayDuka AI, a smart business assistant for informal African merchants. Be concise, friendly, practical. Max 4 sentences unless asked for more.\nBusiness data:\n${ctx}`,messages:[{role:'user',content:msg}]})});
+  const d=await r.json();return d.content?.[0]?.text||'Sorry, could not generate response.';
+}
+async function getQuickInsight(){
+  const btn=document.getElementById('insightBtn'),box=document.getElementById('aiInsightBox'),txt=document.getElementById('aiInsightText');
+  btn.disabled=true;btn.textContent='⏳...';box.classList.add('show');
+  txt.innerHTML='<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analysing...</span></div>';
+  try{txt.textContent=await callClaude('Give me a quick daily sales insight and one tip.',buildSalesContext());}
+  catch(e){txt.textContent='Could not connect to AI.';}
+  btn.disabled=false;btn.textContent='✨ Analyse';
+}
+async function sendChat(){
+  const input=document.getElementById('chatInput'),msg=input.value.trim();
+  if(!msg)return;input.value='';
+  addMsg(msg,'user');
+  const btn=document.getElementById('chatSend');btn.disabled=true;
+  const div=addMsg('🤔 Thinking...','ai');
+  try{div.querySelector('.chat-bubble').textContent=await callClaude(msg,buildSalesContext());}
+  catch(e){div.querySelector('.chat-bubble').textContent='AI offline. Check connection.';}
+  btn.disabled=false;
+  document.getElementById('chatMessages').scrollTop=99999;
+}
+function sendQuick(msg){
+  switchTab('ai',document.querySelectorAll('.tab')[3]);
+  setTimeout(()=>{document.getElementById('chatInput').value=msg;sendChat();},100);
+}
+function addMsg(text,role){
+  const msgs=document.getElementById('chatMessages');
+  const div=document.createElement('div');div.className=`chat-msg ${role}`;
+  div.innerHTML=`<div class="chat-bubble">${text}</div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;return div;
+}
+function updateSyncBadge(){const b=document.getElementById('syncBadge'),t=document.getElementById('syncText'),p=document.getElementById('payBtn');if(isOnline){b.className='sync-badge online';t.textContent='ONLINE';p.className='pay-btn online-pay';}else{b.className='sync-badge offline';t.textContent='OFFLINE';p.className='pay-btn offline-pay';}}
 function updateQueueBanner(){const n=pendingQueue.length;document.getElementById('queueBanner').classList.toggle('hidden',n===0);document.getElementById('queueCount').textContent=n;}
 function renderTransactions(){
   const all=[...pendingQueue.map(t=>({...t,_synced:false})),...transactions];
@@ -194,13 +282,7 @@ function renderTransactions(){
   if(!all.length){list.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div>';return;}
   list.innerHTML=all.slice(0,30).map(tx=>`<div class="tx-card"><div class="tx-left"><div class="tx-icon ${tx._synced?'synced':'pending'}">${tx._synced?'✅':'⏳'}</div><div class="tx-details"><h4>${tx.customer_ref||'Customer'}</h4><p>${new Date(tx.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</p></div></div><div style="text-align:right"><div class="tx-amount">R${parseFloat(tx.amount).toFixed(2)}</div><div class="tx-status ${tx._synced?'synced':'pending'}">${tx._synced?'SYNCED':'PENDING'}</div></div></div>`).join('');
 }
-function updateStats(){
-  const all=[...pendingQueue,...transactions];
-  document.getElementById('statTotal').textContent=`R${all.reduce((s,t)=>s+parseFloat(t.amount||0),0).toFixed(0)}`;
-  document.getElementById('statCount').textContent=all.length;
-  document.getElementById('statSynced').textContent=transactions.length;
-  document.getElementById('statPending').textContent=pendingQueue.length;
-}
+function updateStats(){const all=[...pendingQueue,...transactions];document.getElementById('statTotal').textContent=`R${all.reduce((s,t)=>s+parseFloat(t.amount||0),0).toFixed(0)}`;document.getElementById('statCount').textContent=all.length;document.getElementById('statSynced').textContent=transactions.length;document.getElementById('statPending').textContent=pendingQueue.length;}
 function updateUI(){updateSyncBadge();updateQueueBanner();renderTransactions();updateStats();}
 function switchTab(tab,el){document.querySelectorAll('.content').forEach(c=>c.classList.add('hidden'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+tab).classList.remove('hidden');el.classList.add('active');}
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
