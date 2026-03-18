@@ -4,9 +4,208 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PayDuka PoS</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{--navy:#0a0f1e;--teal:#00c9b1;--gold:#f4c430;--offwhite:#f0ede6;--card:#111827;--border:#1e2d40;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--muted:#6b7280}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,15,30,0.95);backdrop-filter:blur(10px);z-index:100}
+.logo-text{font-size:20px;font-weight:800}.logo-text span{color:var(--teal)}
+.sync-badge{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700}
+.sync-badge.online{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e}
+.sync-badge.offline{background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b}
+.sync-dot{width:7px;height:7px;border-radius:50%;animation:pulse 2s infinite}
+.online .sync-dot{background:#22c55e}.offline .sync-dot{background:#f59e0b;animation:none}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.3)}}
+.merchant-banner{background:linear-gradient(135deg,#0d1f35,#0a1628);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.merchant-info h2{font-size:16px;font-weight:700}.merchant-info p{font-size:12px;color:var(--teal);font-family:'Space Mono',monospace;margin-top:2px}
+.merchant-avatar{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--teal),#0099a0);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--navy)}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--navy);position:sticky;top:69px;z-index:90}
+.tab{flex:1;padding:14px 8px;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase}
+.tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.tab-icon{font-size:16px;display:block;margin-bottom:2px}
+.content{padding:20px;max-width:480px;margin:0 auto}
+.amount-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 20px;margin-bottom:16px}
+.amount-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+.amount-display{display:flex;align-items:baseline;gap:8px;margin-bottom:16px}
+.currency-symbol{font-size:28px;font-weight:800;color:var(--teal);font-family:'Space Mono',monospace}
+.amount-input{background:transparent;border:none;outline:none;font-size:52px;font-weight:800;color:var(--offwhite);font-family:'Space Mono',monospace;width:100%;caret-color:var(--teal)}
+.amount-input::placeholder{color:var(--border)}
+.ref-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--offwhite);font-family:'Syne',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s}
+.ref-input:focus{border-color:var(--teal)}.ref-input::placeholder{color:var(--muted)}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.num-btn{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;font-size:20px;font-weight:700;color:var(--offwhite);font-family:'Space Mono',monospace;cursor:pointer;transition:all 0.15s;text-align:center}
+.num-btn:active{background:var(--border);transform:scale(0.96)}
+.num-btn.del{color:var(--danger)}.num-btn.zero{grid-column:span 2}
+.pay-btn{width:100%;padding:18px;border-radius:14px;border:none;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px}
+.pay-btn.online-pay{background:linear-gradient(135deg,var(--teal),#009e8e);color:var(--navy)}
+.pay-btn.offline-pay{background:linear-gradient(135deg,var(--gold),#e6a800);color:var(--navy)}
+.pay-btn:active{transform:scale(0.98)}.pay-btn:disabled{opacity:0.5}
+.queue-banner{background:rgba(244,196,48,0.1);border:1px solid rgba(244,196,48,0.3);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.queue-info{font-size:13px;color:var(--gold);font-weight:600}
+.queue-count{background:var(--gold);color:var(--navy);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:800;font-family:'Space Mono',monospace}
+.sync-now-btn{background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
+.section-title{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;margin-top:8px}
+.tx-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;animation:slideIn 0.3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.tx-left{display:flex;align-items:center;gap:12px}
+.tx-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.tx-icon.synced{background:rgba(34,197,94,0.15)}.tx-icon.pending{background:rgba(245,158,11,0.15)}
+.tx-details h4{font-size:14px;font-weight:700}.tx-details p{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px}
+.tx-amount{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--teal)}
+.tx-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:4px;text-align:right}
+.tx-status.synced{background:rgba(34,197,94,0.15);color:#22c55e}.tx-status.pending{background:rgba(245,158,11,0.15);color:#f59e0b}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#22c55e;color:white;padding:14px 24px;border-radius:12px;font-weight:700;font-size:14px;z-index:999;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}.toast.warning{background:#f59e0b}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.stat-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase}
+.stat-value{font-size:24px;font-weight:800;font-family:'Space Mono',monospace;margin-top:6px}
+.stat-value.teal{color:var(--teal)}.stat-value.gold{color:var(--gold)}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}.empty p{font-size:14px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:100%;max-width:340px;transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);text-align:center}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal h3{font-size:20px;font-weight:800;margin-bottom:8px}.modal p{font-size:13px;color:var(--muted);margin-bottom:20px}
+.qr-display{background:white;border-radius:16px;padding:20px;margin:0 auto 20px;width:160px;height:160px;display:flex;align-items:center;justify-content:center;font-size:70px}
+.modal-amount{font-size:32px;font-weight:800;font-family:'Space Mono',monospace;color:var(--teal);margin-bottom:20px}
+.modal-close{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--offwhite);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+.hidden{display:none!important}
+</style>
 </head>
 <body>
-<div id="app"></div>
-<script type="module" src="/src/main.js"></script>
+<div class="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M18 2L32 10V26L18 34L4 26V10L18 2Z" fill="#00c9b1" opacity="0.15" stroke="#00c9b1" stroke-width="1.5"/><path d="M18 8L26 13V23L18 28L10 23V13L18 8Z" fill="#00c9b1" opacity="0.3"/><circle cx="18" cy="18" r="4" fill="#00c9b1"/></svg>
+    <span class="logo-text">Pay<span>Duka</span> PoS</span>
+  </div>
+  <div class="sync-badge online" id="syncBadge"><div class="sync-dot"></div><span id="syncText">ONLINE</span></div>
+</div>
+<div class="merchant-banner">
+  <div class="merchant-info"><h2 id="merchantName">Loading...</h2><p id="merchantPhone">—</p></div>
+  <div class="merchant-avatar" id="merchantAvatar">P</div>
+</div>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('pay',this)"><span class="tab-icon">💳</span>PAY</div>
+  <div class="tab" onclick="switchTab('history',this)"><span class="tab-icon">📋</span>HISTORY</div>
+  <div class="tab" onclick="switchTab('stats',this)"><span class="tab-icon">📊</span>STATS</div>
+</div>
+<div class="content" id="tab-pay">
+  <div class="queue-banner hidden" id="queueBanner">
+    <div><div class="queue-info">⚡ Offline queue</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Syncs when online</div></div>
+    <div style="display:flex;align-items:center;gap:8px"><span class="queue-count" id="queueCount">0</span><button class="sync-now-btn" onclick="syncNow()">SYNC</button></div>
+  </div>
+  <div class="amount-section">
+    <div class="amount-label">Amount to charge</div>
+    <div class="amount-display"><span class="currency-symbol">R</span><input class="amount-input" id="amountInput" type="text" placeholder="0.00" readonly/></div>
+    <input class="ref-input" id="customerRef" type="text" placeholder="Customer name (optional)"/>
+  </div>
+  <div class="numpad">
+    <button class="num-btn" onclick="numPress('1')">1</button><button class="num-btn" onclick="numPress('2')">2</button><button class="num-btn" onclick="numPress('3')">3</button>
+    <button class="num-btn" onclick="numPress('4')">4</button><button class="num-btn" onclick="numPress('5')">5</button><button class="num-btn" onclick="numPress('6')">6</button>
+    <button class="num-btn" onclick="numPress('7')">7</button><button class="num-btn" onclick="numPress('8')">8</button><button class="num-btn" onclick="numPress('9')">9</button>
+    <button class="num-btn" onclick="numPress('.')">.</button><button class="num-btn zero" onclick="numPress('0')">0</button><button class="num-btn del" onclick="numDelete()">⌫</button>
+  </div>
+  <button class="pay-btn online-pay" id="payBtn" onclick="processPayment()">⚡ CHARGE R<span id="btnAmount">0.00</span></button>
+</div>
+<div class="content hidden" id="tab-history">
+  <div class="section-title">Recent Transactions</div>
+  <div id="txList"><div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div></div>
+</div>
+<div class="content hidden" id="tab-stats">
+  <div class="section-title">Today's Summary</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Total Sales</div><div class="stat-value teal" id="statTotal">R0</div></div>
+    <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value gold" id="statCount">0</div></div>
+    <div class="stat-card"><div class="stat-label">Synced</div><div class="stat-value teal" id="statSynced">0</div></div>
+    <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value gold" id="statPending">0</div></div>
+  </div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;">
+    <p style="font-size:13px;color:var(--muted);line-height:1.6;">PayDuka PoS works <strong style="color:var(--teal)">completely offline</strong>. Transactions queue locally and sync to Supabase automatically when connectivity returns. Built on PowerSync for Africa's informal economy.</p>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">
+      <div>🔗 PowerSync + Supabase</div><div style="margin-top:4px;">🌍 Africa's informal economy</div><div style="margin-top:4px;">⛓️ PDUKA Token on Polygon</div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>✅ Payment Received</h3>
+    <p id="modalSubtitle">Transaction recorded</p>
+    <div class="qr-display">🧾</div>
+    <div class="modal-amount" id="modalAmount">R0.00</div>
+    <button class="modal-close" onclick="closeModal()">Done — New Payment</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const SUPABASE_URL='https://ktjmilwrqpaxwertvnjq.supabase.co';
+const SUPABASE_KEY='sb_publishable_7JBBW3YFuQAPMqdnbdFi6g_jT7w9obI';
+let isOnline=navigator.onLine,currentAmount='',merchant=null,transactions=[],pendingQueue=[],sb=null;
+async function init(){
+  try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);await loadMerchant();await loadTransactions();}catch(e){showToast('Offline mode','warning');}
+  loadPending();updateUI();
+  window.addEventListener('online',()=>{isOnline=true;updateSyncBadge();syncNow();showToast('Back online — syncing!');});
+  window.addEventListener('offline',()=>{isOnline=false;updateSyncBadge();showToast('Offline — payments still work!','warning');});
+}
+async function loadMerchant(){
+  const{data}=await sb.from('merchants').select('*').limit(1).single();
+  if(data){merchant=data;document.getElementById('merchantName').textContent=data.store_name||data.name;document.getElementById('merchantPhone').textContent=data.phone||'';document.getElementById('merchantAvatar').textContent=(data.store_name||data.name).charAt(0).toUpperCase();}
+}
+async function loadTransactions(){
+  const{data}=await sb.from('transactions').select('*').order('created_at',{ascending:false}).limit(50);
+  if(data){transactions=data.map(t=>({...t,_synced:true}));renderTransactions();updateStats();}
+}
+function loadPending(){try{const s=localStorage.getItem('payduka_q');if(s)pendingQueue=JSON.parse(s);}catch(e){}updateQueueBanner();}
+function savePending(){try{localStorage.setItem('payduka_q',JSON.stringify(pendingQueue));}catch(e){}}
+function numPress(v){if(v==='.'&&currentAmount.includes('.'))return;if(currentAmount.includes('.')){const d=currentAmount.split('.')[1];if(d&&d.length>=2)return;}currentAmount=currentAmount==='0'&&v!=='.'?v:currentAmount+v;updateDisplay();}
+function numDelete(){currentAmount=currentAmount.slice(0,-1);updateDisplay();}
+function updateDisplay(){const d=currentAmount||'0.00';document.getElementById('amountInput').value=d;document.getElementById('btnAmount').textContent=parseFloat(d||0).toFixed(2);}
+async function processPayment(){
+  const amount=parseFloat(currentAmount);
+  if(!amount||amount<=0){showToast('Enter an amount','warning');return;}
+  const ref=document.getElementById('customerRef').value.trim();
+  const tx={id:crypto.randomUUID(),merchant_id:merchant?.id||null,amount,currency:'ZAR',customer_ref:ref||null,payment_method:'PDUKA',status:'completed',created_at:new Date().toISOString()};
+  document.getElementById('modalAmount').textContent=`R${amount.toFixed(2)}`;
+  document.getElementById('modalSubtitle').textContent=ref?`Payment from ${ref}`:'Transaction recorded';
+  if(isOnline&&sb){try{const{error}=await sb.from('transactions').insert([tx]);if(!error){transactions.unshift({...tx,_synced:true});showToast(`✅ R${amount.toFixed(2)} synced!`);}else throw error;}catch(e){saveOffline(tx);}}
+  else{saveOffline(tx);showToast(`💾 R${amount.toFixed(2)} saved offline`,'warning');}
+  document.getElementById('modalOverlay').classList.add('open');
+  currentAmount='';document.getElementById('customerRef').value='';updateDisplay();renderTransactions();updateStats();
+}
+function saveOffline(tx){pendingQueue.unshift({...tx,_synced:false});savePending();updateQueueBanner();}
+async function syncNow(){
+  if(!isOnline||!sb||!pendingQueue.length)return;
+  for(const tx of [...pendingQueue]){try{const{_synced,...clean}=tx;const{error}=await sb.from('transactions').insert([clean]);if(!error){pendingQueue=pendingQueue.filter(t=>t.id!==tx.id);transactions.unshift({...clean,_synced:true});}}catch(e){}}
+  savePending();updateQueueBanner();renderTransactions();updateStats();
+  if(!pendingQueue.length)showToast('✅ All synced!');
+}
+function updateSyncBadge(){
+  const b=document.getElementById('syncBadge'),t=document.getElementById('syncText'),p=document.getElementById('payBtn');
+  if(isOnline){b.className='sync-badge online';t.textContent='ONLINE';p.className='pay-btn online-pay';}
+  else{b.className='sync-badge offline';t.textContent='OFFLINE';p.className='pay-btn offline-pay';}
+}
+function updateQueueBanner(){const n=pendingQueue.length;document.getElementById('queueBanner').classList.toggle('hidden',n===0);document.getElementById('queueCount').textContent=n;}
+function renderTransactions(){
+  const all=[...pendingQueue.map(t=>({...t,_synced:false})),...transactions];
+  const list=document.getElementById('txList');
+  if(!all.length){list.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div>';return;}
+  list.innerHTML=all.slice(0,30).map(tx=>`<div class="tx-card"><div class="tx-left"><div class="tx-icon ${tx._synced?'synced':'pending'}">${tx._synced?'✅':'⏳'}</div><div class="tx-details"><h4>${tx.customer_ref||'Customer'}</h4><p>${new Date(tx.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</p></div></div><div style="text-align:right"><div class="tx-amount">R${parseFloat(tx.amount).toFixed(2)}</div><div class="tx-status ${tx._synced?'synced':'pending'}">${tx._synced?'SYNCED':'PENDING'}</div></div></div>`).join('');
+}
+function updateStats(){
+  const all=[...pendingQueue,...transactions];
+  document.getElementById('statTotal').textContent=`R${all.reduce((s,t)=>s+parseFloat(t.amount||0),0).toFixed(0)}`;
+  document.getElementById('statCount').textContent=all.length;
+  document.getElementById('statSynced').textContent=transactions.length;
+  document.getElementById('statPending').textContent=pendingQueue.length;
+}
+function updateUI(){updateSyncBadge();updateQueueBanner();renderTransactions();updateStats();}
+function switchTab(tab,el){document.querySelectorAll('.content').forEach(c=>c.classList.add('hidden'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+tab).classList.remove('hidden');el.classList.add('active');}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type==='warning'?'warning':''} show`;setTimeout(()=>t.classList.remove('show'),3000);}
+init();
+</script>
 </body>
 </html>
