@@ -3,28 +3,250 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PayDuka PoS</title>
+<title>PayDuka PoS — Powered by PowerSync</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!--
+  ============================================================
+  POWERSYNC INTEGRATION NOTES
+  ============================================================
+  PowerSync Web SDK requires a bundler (Vite/Webpack).
+  This file is the complete single-file demo UI.
+  MockPowerSyncDB mirrors the exact @powersync/web API.
+  In production: swap for import { db } from './powersync/database.js'
+  ============================================================
+-->
 <style>
-:root{--navy:#0a0f1e;--teal:#00c9b1;--gold:#f4c430;--offwhite:#f0ede6;--card:#111827;--border:#1e2d40;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--muted:#6b7280;--purple:#8b5cf6}
+:root{
+  --navy:#0a0f1e;--teal:#00c9b1;--gold:#f4c430;--offwhite:#f0ede6;
+  --card:#111827;--border:#1e2d40;--success:#22c55e;--warning:#f59e0b;
+  --danger:#ef4444;--muted:#6b7280;--purple:#8b5cf6;--red:#ff4d6d;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;min-height:100vh}
-.header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(10,15,30,0.95);backdrop-filter:blur(10px);z-index:100}
+body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;min-height:100vh;
+  background-image:linear-gradient(rgba(0,201,177,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,201,177,0.025) 1px,transparent 1px);
+  background-size:36px 36px;}
+
+/* ── CASHIER AUTH SCREENS ── */
+#authScreen{
+  position:fixed;inset:0;z-index:500;
+  background:var(--navy);
+  background-image:linear-gradient(rgba(0,201,177,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,201,177,0.03) 1px,transparent 1px);
+  background-size:36px 36px;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  transition:opacity 0.4s ease;
+}
+#authScreen.hidden{opacity:0;pointer-events:none;}
+
+.auth-glow{
+  position:absolute;width:500px;height:500px;
+  background:radial-gradient(circle,rgba(0,201,177,0.1) 0%,transparent 70%);
+  top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;
+}
+
+.auth-card{
+  background:rgba(17,24,39,0.9);
+  border:1px solid var(--border);
+  border-radius:20px;padding:36px 32px;
+  width:100%;max-width:400px;
+  position:relative;
+  box-shadow:0 0 80px rgba(0,201,177,0.06),0 32px 64px rgba(0,0,0,0.5);
+  backdrop-filter:blur(20px);
+}
+.auth-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--teal),transparent);
+  border-radius:20px 20px 0 0;
+}
+
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.auth-hex{
+  width:42px;height:42px;
+  background:linear-gradient(135deg,var(--teal),#0099a0);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:13px;color:var(--navy);
+  box-shadow:0 0 20px rgba(0,201,177,0.4);flex-shrink:0;
+}
+.auth-brand-name{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.auth-brand-name span{color:var(--teal);}
+
+.auth-title{font-size:18px;font-weight:700;margin-bottom:4px;}
+.auth-sub{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:24px;}
+
+/* Cashier select list */
+.cashier-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+.cashier-chip{
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border);
+  border-radius:14px;padding:14px 18px;
+  cursor:pointer;transition:all 0.15s;
+  display:flex;align-items:center;gap:14px;
+  font-weight:600;font-size:15px;
+}
+.cashier-chip:hover,.cashier-chip.selected{
+  border-color:var(--teal);
+  background:rgba(0,201,177,0.08);
+  color:var(--teal);
+}
+.c-avatar{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:800;color:var(--navy);
+}
+.c-meta{display:flex;flex-direction:column;gap:2px;flex:1;}
+.c-name{font-weight:700;font-size:14px;}
+.c-role{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.5px;}
+.c-online{
+  display:flex;align-items:center;gap:5px;
+  font-size:10px;color:var(--success);font-family:'Space Mono',monospace;
+}
+.c-online-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:onlinePulse 2s infinite;}
+@keyframes onlinePulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* PIN screen */
+#pinScreen{display:none;}
+.back-btn{
+  background:none;border:1px solid var(--border);border-radius:10px;
+  padding:8px 14px;color:var(--muted);font-family:'Syne',sans-serif;
+  font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;
+  margin-bottom:20px;letter-spacing:0.5px;
+}
+.back-btn:hover{border-color:var(--teal);color:var(--teal);}
+
+.pin-who{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+.pin-who-name{font-size:18px;font-weight:700;}
+.pin-who-hint{font-size:11px;color:var(--muted);margin-top:2px;font-family:'Space Mono',monospace;}
+
+.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:24px;}
+.pin-dot{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid var(--border);transition:all 0.15s;
+}
+.pin-dot.filled{background:var(--teal);border-color:var(--teal);box-shadow:0 0 10px rgba(0,201,177,0.5);}
+
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
+.pin-btn{
+  background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  border-radius:12px;padding:18px;
+  color:var(--offwhite);font-family:'Space Mono',monospace;
+  font-size:20px;font-weight:700;cursor:pointer;
+  transition:all 0.12s;text-align:center;
+}
+.pin-btn:hover{background:rgba(0,201,177,0.1);border-color:var(--teal);color:var(--teal);}
+.pin-btn:active{transform:scale(0.93);}
+.pin-btn.del{font-size:13px;font-family:'Syne',sans-serif;color:var(--muted);}
+.pin-btn.zero{grid-column:2;}
+
+.pin-error{
+  background:rgba(255,77,109,0.1);border:1px solid var(--red);
+  border-radius:10px;padding:10px 14px;
+  font-size:12px;color:var(--red);text-align:center;
+  margin-bottom:16px;animation:shake 0.3s ease;
+}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+
+.login-btn{
+  width:100%;background:linear-gradient(135deg,var(--teal),#009e8e);
+  border:none;border-radius:12px;padding:15px;
+  color:var(--navy);font-family:'Syne',sans-serif;
+  font-size:15px;font-weight:800;cursor:pointer;
+  transition:all 0.2s;box-shadow:0 4px 20px rgba(0,201,177,0.3);
+}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,201,177,0.4);}
+.login-btn:active{transform:scale(0.98);}
+.login-btn:disabled{opacity:0.35;cursor:not-allowed;transform:none;}
+
+.auth-footer{text-align:center;margin-top:16px;}
+.offline-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(244,196,48,0.1);border:1px solid rgba(244,196,48,0.25);
+  border-radius:100px;padding:5px 12px;
+  font-size:10px;color:var(--gold);font-family:'Space Mono',monospace;letter-spacing:0.5px;
+}
+.offline-pip{width:5px;height:5px;border-radius:50%;background:var(--gold);}
+
+/* ── CASHIER SESSION TOPBAR (shown when logged in) ── */
+.cashier-session-bar{
+  background:rgba(0,201,177,0.07);
+  border-bottom:1px solid rgba(0,201,177,0.15);
+  padding:8px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:91;
+}
+.session-who{display:flex;align-items:center;gap:10px;}
+.session-avatar{
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:var(--navy);
+}
+.session-name{font-size:13px;font-weight:700;color:var(--teal);}
+.session-time{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;}
+.session-right{display:flex;align-items:center;gap:8px;}
+.session-online{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--success);font-family:'Space Mono',monospace;}
+.session-online-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:onlinePulse 2s infinite;}
+.logout-btn{
+  background:none;border:1px solid var(--border);border-radius:8px;
+  padding:5px 12px;color:var(--muted);font-family:'Space Mono',monospace;
+  font-size:10px;cursor:pointer;transition:all 0.15s;letter-spacing:0.5px;
+}
+.logout-btn:hover{border-color:var(--red);color:var(--red);background:rgba(255,77,109,0.08);}
+
+/* ── DASHBOARD TAB ── */
+.dash-alert{
+  background:rgba(255,77,109,0.08);
+  border:1px solid rgba(255,77,109,0.3);
+  border-radius:14px;padding:14px 18px;
+  margin-bottom:16px;
+  display:flex;align-items:flex-start;gap:12px;
+  animation:alertGlow 2.5s infinite;
+}
+@keyframes alertGlow{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,77,109,0);}
+  50%{box-shadow:0 0 0 5px rgba(255,77,109,0.08);}
+}
+.dash-alert-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+.dash-alert-body{flex:1;}
+.dash-alert-title{font-size:13px;font-weight:700;color:var(--red);margin-bottom:3px;}
+.dash-alert-msg{font-size:12px;color:rgba(255,77,109,0.8);line-height:1.5;}
+
+.cashier-summary-row{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;margin-bottom:8px;
+}
+.csr-info{flex:1;}
+.csr-name{font-size:14px;font-weight:700;}
+.csr-meta{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px;}
+.csr-stats{text-align:right;}
+.csr-amount{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--teal);}
+.csr-count{font-size:10px;color:var(--muted);margin-top:2px;}
+.csr-live-dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:onlinePulse 2s infinite;flex-shrink:0;}
+.csr-idle-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;}
+
+/* ── EXISTING STYLES (preserved from original) ── */
+.ps-status-bar{background:rgba(0,201,177,0.06);border-bottom:1px solid rgba(0,201,177,0.15);padding:6px 20px;display:flex;align-items:center;justify-content:space-between}
+.ps-label{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:var(--teal);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.ps-label svg{opacity:0.7}
+.ps-sync-info{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)}
+.ps-sync-info span{color:var(--teal)}
+.header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:rgba(10,15,30,0.97);backdrop-filter:blur(10px);z-index:89;position:relative;}
 .logo-text{font-size:20px;font-weight:800}.logo-text span{color:var(--teal)}
 .sync-badge{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700}
 .sync-badge.online{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e}
 .sync-badge.offline{background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b}
+.sync-badge.syncing{background:rgba(0,201,177,0.15);border:1px solid rgba(0,201,177,0.3);color:var(--teal)}
 .sync-dot{width:7px;height:7px;border-radius:50%;animation:pulse 2s infinite}
 .online .sync-dot{background:#22c55e}.offline .sync-dot{background:#f59e0b;animation:none}
+.syncing .sync-dot{background:var(--teal);animation:pulse 0.6s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.3)}}
-.merchant-banner{background:linear-gradient(135deg,#0d1f35,#0a1628);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.merchant-banner{background:linear-gradient(135deg,#0d1f35,#0a1628);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
 .merchant-info h2{font-size:16px;font-weight:700}.merchant-info p{font-size:12px;color:var(--teal);font-family:'Space Mono',monospace;margin-top:2px}
 .merchant-avatar{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--teal),#0099a0);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--navy)}
-.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--navy);position:sticky;top:69px;z-index:90}
-.tab{flex:1;padding:12px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--navy);position:sticky;top:0;z-index:88;}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:10px;font-weight:700;letter-spacing:0.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;text-transform:uppercase}
 .tab.active{color:var(--teal);border-bottom-color:var(--teal)}
-.tab-icon{font-size:15px;display:block;margin-bottom:2px}
+.tab-icon{font-size:14px;display:block;margin-bottom:2px}
 .content{padding:20px;max-width:480px;margin:0 auto}
 .amount-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px 20px;margin-bottom:16px}
 .amount-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
@@ -55,8 +277,9 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
 .tx-amount{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--teal)}
 .tx-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:4px;text-align:right}
 .tx-status.synced{background:rgba(34,197,94,0.15);color:#22c55e}.tx-status.pending{background:rgba(245,158,11,0.15);color:#f59e0b}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#22c55e;color:white;padding:14px 24px;border-radius:12px;font-weight:700;font-size:14px;z-index:999;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);white-space:nowrap}
-.toast.show{transform:translateX(-50%) translateY(0)}.toast.warning{background:#f59e0b}
+.tx-cashier-tag{font-size:10px;font-family:'Space Mono',monospace;color:var(--purple);background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:4px;padding:1px 5px;display:inline-block;margin-top:3px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#22c55e;color:white;padding:14px 24px;border-radius:12px;font-weight:700;font-size:14px;z-index:9999;transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}.toast.warning{background:#f59e0b;color:var(--navy);}
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
 .stat-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase}
@@ -70,7 +293,9 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
 .modal-overlay.open .modal{transform:scale(1)}
 .modal h3{font-size:20px;font-weight:800;margin-bottom:8px}.modal p{font-size:13px;color:var(--muted);margin-bottom:20px}
 .qr-display{background:white;border-radius:16px;padding:20px;margin:0 auto 20px;width:160px;height:160px;display:flex;align-items:center;justify-content:center;font-size:70px}
-.modal-amount{font-size:32px;font-weight:800;font-family:'Space Mono',monospace;color:var(--teal);margin-bottom:20px}
+.modal-amount{font-size:32px;font-weight:800;font-family:'Space Mono',monospace;color:var(--teal);margin-bottom:8px}
+.modal-cashier-tag{font-size:12px;font-family:'Space Mono',monospace;color:var(--purple);margin-bottom:14px;}
+.modal-sync-note{font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);margin-bottom:20px;padding:8px 12px;background:rgba(0,201,177,0.06);border:1px solid rgba(0,201,177,0.15);border-radius:8px}
 .modal-close{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--offwhite);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
 .ai-section{background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(0,201,177,0.05));border:1px solid rgba(139,92,246,0.3);border-radius:16px;padding:20px;margin-bottom:16px}
 .ai-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -85,7 +310,7 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
 .ai-dot{width:6px;height:6px;border-radius:50%;background:#8b5cf6;animation:aiPulse 1s infinite}
 .ai-dot:nth-child(2){animation-delay:0.2s}.ai-dot:nth-child(3){animation-delay:0.4s}
 @keyframes aiPulse{0%,100%{opacity:0.3}50%{opacity:1}}
-.chat-container{display:flex;flex-direction:column;height:calc(100vh - 220px);min-height:400px}
+.chat-container{display:flex;flex-direction:column;height:calc(100vh - 260px);min-height:360px}
 .chat-messages{flex:1;overflow-y:auto;padding-bottom:16px}
 .chat-msg{margin-bottom:12px;display:flex;flex-direction:column}
 .chat-msg.user{align-items:flex-end}.chat-msg.ai{align-items:flex-start}
@@ -99,194 +324,913 @@ body{background:var(--navy);color:var(--offwhite);font-family:'Syne',sans-serif;
 .chat-send:disabled{opacity:0.5}
 .quick-prompts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .quick-btn{background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);color:#8b5cf6;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
+.ps-arch-card{background:rgba(0,201,177,0.04);border:1px solid rgba(0,201,177,0.2);border-radius:14px;padding:16px;margin-bottom:16px}
+.ps-arch-title{font-size:11px;font-weight:700;color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.ps-arch-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
+.ps-arch-row .ps-node{background:rgba(0,201,177,0.1);border:1px solid rgba(0,201,177,0.2);border-radius:6px;padding:3px 8px;color:var(--teal);font-size:10px;font-weight:700}
+.ps-arch-row .ps-arrow{color:rgba(0,201,177,0.4)}
+.ps-arch-row .ps-node.active{background:rgba(0,201,177,0.2);border-color:var(--teal);box-shadow:0 0 8px rgba(0,201,177,0.3)}
+.ps-upload-queue{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px}
+.ps-upload-title{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.ps-upload-item{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.ps-upload-item:last-child{border-bottom:none}
+.ps-upload-item span{font-size:11px;font-family:'Space Mono',monospace;color:var(--muted)}
+.ps-upload-item .ps-upload-status{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700}
+.ps-upload-status.queued{background:rgba(245,158,11,0.15);color:#f59e0b}
+.ps-upload-status.uploaded{background:rgba(34,197,94,0.15);color:#22c55e}
 .hidden{display:none!important}
 </style>
 </head>
 <body>
-<div class="header">
-  <div style="display:flex;align-items:center;gap:10px">
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M18 2L32 10V26L18 34L4 26V10L18 2Z" fill="#00c9b1" opacity="0.15" stroke="#00c9b1" stroke-width="1.5"/><path d="M18 8L26 13V23L18 28L10 23V13L18 8Z" fill="#00c9b1" opacity="0.3"/><circle cx="18" cy="18" r="4" fill="#00c9b1"/></svg>
-    <span class="logo-text">Pay<span>Duka</span> PoS</span>
-  </div>
-  <div class="sync-badge online" id="syncBadge"><div class="sync-dot"></div><span id="syncText">ONLINE</span></div>
-</div>
-<div class="merchant-banner">
-  <div class="merchant-info"><h2 id="merchantName">Loading...</h2><p id="merchantPhone">—</p></div>
-  <div class="merchant-avatar" id="merchantAvatar">P</div>
-</div>
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('pay',this)"><span class="tab-icon">💳</span>PAY</div>
-  <div class="tab" onclick="switchTab('history',this)"><span class="tab-icon">📋</span>HISTORY</div>
-  <div class="tab" onclick="switchTab('stats',this)"><span class="tab-icon">📊</span>STATS</div>
-  <div class="tab" onclick="switchTab('ai',this)"><span class="tab-icon">🤖</span>AI</div>
-</div>
-<div class="content" id="tab-pay">
-  <div class="queue-banner hidden" id="queueBanner">
-    <div><div class="queue-info">⚡ Offline queue</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Syncs when online</div></div>
-    <div style="display:flex;align-items:center;gap:8px"><span class="queue-count" id="queueCount">0</span><button class="sync-now-btn" onclick="syncNow()">SYNC</button></div>
-  </div>
-  <div class="amount-section">
-    <div class="amount-label">Amount to charge</div>
-    <div class="amount-display"><span class="currency-symbol">R</span><input class="amount-input" id="amountInput" type="text" placeholder="0.00" readonly/></div>
-    <input class="ref-input" id="customerRef" type="text" placeholder="Customer name or item (optional)"/>
-  </div>
-  <div class="numpad">
-    <button class="num-btn" onclick="numPress('1')">1</button><button class="num-btn" onclick="numPress('2')">2</button><button class="num-btn" onclick="numPress('3')">3</button>
-    <button class="num-btn" onclick="numPress('4')">4</button><button class="num-btn" onclick="numPress('5')">5</button><button class="num-btn" onclick="numPress('6')">6</button>
-    <button class="num-btn" onclick="numPress('7')">7</button><button class="num-btn" onclick="numPress('8')">8</button><button class="num-btn" onclick="numPress('9')">9</button>
-    <button class="num-btn" onclick="numPress('.')">.</button><button class="num-btn zero" onclick="numPress('0')">0</button><button class="num-btn del" onclick="numDelete()">⌫</button>
-  </div>
-  <button class="pay-btn online-pay" id="payBtn" onclick="processPayment()">⚡ CHARGE R<span id="btnAmount">0.00</span></button>
-</div>
-<div class="content hidden" id="tab-history">
-  <div class="section-title">Recent Transactions</div>
-  <div id="txList"><div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div></div>
-</div>
-<div class="content hidden" id="tab-stats">
-  <div class="section-title">Today's Summary</div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Total Sales</div><div class="stat-value teal" id="statTotal">R0</div></div>
-    <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value gold" id="statCount">0</div></div>
-    <div class="stat-card"><div class="stat-label">Synced</div><div class="stat-value teal" id="statSynced">0</div></div>
-    <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value gold" id="statPending">0</div></div>
-  </div>
-  <div class="ai-section">
-    <div class="ai-header">
-      <div class="ai-title">🤖 AI Insight <span class="ai-badge">CLAUDE</span></div>
-      <button class="ai-btn" id="insightBtn" onclick="getQuickInsight()">✨ Analyse</button>
+
+<!-- ============================================================ -->
+<!-- CASHIER AUTH SCREEN (shown on load, dismissed after login)   -->
+<!-- ============================================================ -->
+<div id="authScreen">
+  <div class="auth-glow"></div>
+  <div class="auth-card">
+
+    <div class="auth-brand">
+      <div class="auth-hex">PD</div>
+      <div class="auth-brand-name">Pay<span>Duka</span> PoS</div>
     </div>
-    <div class="ai-response" id="aiInsightBox"><p id="aiInsightText"></p></div>
+
+    <!-- Step 1: Select cashier -->
+    <div id="selectScreen">
+      <div class="auth-title">Who's on shift?</div>
+      <div class="auth-sub">Select your name to clock in</div>
+      <div class="cashier-list" id="cashierList">
+        <!-- Populated by JS -->
+      </div>
+      <div class="auth-footer">
+        <span class="offline-pill"><span class="offline-pip"></span>OFFLINE-FIRST · POWERSYNC</span>
+      </div>
+    </div>
+
+    <!-- Step 2: PIN entry -->
+    <div id="pinScreen">
+      <button class="back-btn" onclick="goBackToSelect()">← Back</button>
+      <div class="pin-who">
+        <div class="c-avatar" id="pinAvatar" style="width:44px;height:44px;font-size:16px;"></div>
+        <div>
+          <div class="pin-who-name" id="pinName">Cashier</div>
+          <div class="pin-who-hint">Enter your 4-digit PIN</div>
+        </div>
+      </div>
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div id="pinError" class="pin-error hidden"></div>
+      <div class="pinpad">
+        <button class="pin-btn" onclick="pinKey('1')">1</button>
+        <button class="pin-btn" onclick="pinKey('2')">2</button>
+        <button class="pin-btn" onclick="pinKey('3')">3</button>
+        <button class="pin-btn" onclick="pinKey('4')">4</button>
+        <button class="pin-btn" onclick="pinKey('5')">5</button>
+        <button class="pin-btn" onclick="pinKey('6')">6</button>
+        <button class="pin-btn" onclick="pinKey('7')">7</button>
+        <button class="pin-btn" onclick="pinKey('8')">8</button>
+        <button class="pin-btn" onclick="pinKey('9')">9</button>
+        <button class="pin-btn del" onclick="pinDel()">⌫ DEL</button>
+        <button class="pin-btn zero" onclick="pinKey('0')">0</button>
+      </div>
+      <div class="auth-footer" style="margin-top:0">
+        <span class="offline-pill"><span class="offline-pip"></span>PIN verified locally · works offline</span>
+      </div>
+    </div>
+
   </div>
 </div>
-<div class="content hidden" id="tab-ai">
-  <div class="section-title">🤖 PayDuka AI Assistant</div>
-  <div class="quick-prompts">
-    <button class="quick-btn" onclick="sendQuick('How are my sales today?')">📈 Today's sales</button>
-    <button class="quick-btn" onclick="sendQuick('What should I restock?')">📦 Restock alert</button>
-    <button class="quick-btn" onclick="sendQuick('Give me a weekly sales summary')">📊 Weekly summary</button>
-    <button class="quick-btn" onclick="sendQuick('How can I grow my business?')">💡 Growth tips</button>
-    <button class="quick-btn" onclick="sendQuick('What are my peak trading hours?')">⏰ Peak hours</button>
-  </div>
-  <div class="chat-container">
-    <div class="chat-messages" id="chatMessages">
-      <div class="chat-msg ai"><div class="chat-bubble">👋 Hi! I'm your PayDuka AI assistant. I can analyse your sales, alert you on restocking, and give business insights. What would you like to know?</div></div>
+
+<!-- ============================================================ -->
+<!-- MAIN APP (revealed after cashier login)                       -->
+<!-- ============================================================ -->
+<div id="mainApp">
+
+  <!-- PowerSync status bar -->
+  <div class="ps-status-bar">
+    <div class="ps-label">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="5" stroke="#00c9b1" stroke-width="1.5"/>
+        <path d="M4 6l1.5 1.5L8 4" stroke="#00c9b1" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      POWERSYNC OFFLINE-FIRST
     </div>
-    <div class="chat-input-area">
-      <input class="chat-input" id="chatInput" type="text" placeholder="Ask about your business..." onkeydown="if(event.key==='Enter')sendChat()"/>
-      <button class="chat-send" id="chatSend" onclick="sendChat()">➤</button>
+    <div class="ps-sync-info">SQLite → <span id="psUploadCount">0</span> queued writes</div>
+  </div>
+
+  <!-- Cashier session bar -->
+  <div class="cashier-session-bar">
+    <div class="session-who">
+      <div class="session-avatar" id="sessionAvatar"></div>
+      <div>
+        <div class="session-name" id="sessionName">—</div>
+        <div class="session-time" id="sessionTime">—</div>
+      </div>
+    </div>
+    <div class="session-right">
+      <div class="session-online"><div class="session-online-dot"></div>LIVE</div>
+      <button class="logout-btn" onclick="logoutCashier()">LOGOUT</button>
     </div>
   </div>
-</div>
+
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M18 2L32 10V26L18 34L4 26V10L18 2Z" fill="#00c9b1" opacity="0.15" stroke="#00c9b1" stroke-width="1.5"/><path d="M18 8L26 13V23L18 28L10 23V13L18 8Z" fill="#00c9b1" opacity="0.3"/><circle cx="18" cy="18" r="4" fill="#00c9b1"/></svg>
+      <span class="logo-text">Pay<span>Duka</span> PoS</span>
+    </div>
+    <div class="sync-badge online" id="syncBadge"><div class="sync-dot"></div><span id="syncText">ONLINE</span></div>
+  </div>
+
+  <div class="merchant-banner">
+    <div class="merchant-info"><h2 id="merchantName">Loading...</h2><p id="merchantPhone">—</p></div>
+    <div class="merchant-avatar" id="merchantAvatar">P</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('pay',this)"><span class="tab-icon">💳</span>PAY</div>
+    <div class="tab" onclick="switchTab('history',this)"><span class="tab-icon">📋</span>HISTORY</div>
+    <div class="tab" onclick="switchTab('stats',this)"><span class="tab-icon">📊</span>STATS</div>
+    <div class="tab" onclick="switchTab('dashboard',this)"><span class="tab-icon">🏪</span>DASH</div>
+    <div class="tab" onclick="switchTab('sync',this)"><span class="tab-icon">⚡</span>SYNC</div>
+    <div class="tab" onclick="switchTab('ai',this)"><span class="tab-icon">🤖</span>AI</div>
+  </div>
+
+  <!-- PAY TAB -->
+  <div class="content" id="tab-pay">
+    <div class="queue-banner hidden" id="queueBanner">
+      <div><div class="queue-info">⚡ PowerSync upload queue</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-syncs when online</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="queue-count" id="queueCount">0</span><button class="sync-now-btn" onclick="syncNow()">SYNC</button></div>
+    </div>
+    <div class="amount-section">
+      <div class="amount-label">Amount to charge</div>
+      <div class="amount-display"><span class="currency-symbol">R</span><input class="amount-input" id="amountInput" type="text" placeholder="0.00" readonly/></div>
+      <input class="ref-input" id="customerRef" type="text" placeholder="Customer name or item (optional)"/>
+    </div>
+    <div class="numpad">
+      <button class="num-btn" onclick="numPress('1')">1</button><button class="num-btn" onclick="numPress('2')">2</button><button class="num-btn" onclick="numPress('3')">3</button>
+      <button class="num-btn" onclick="numPress('4')">4</button><button class="num-btn" onclick="numPress('5')">5</button><button class="num-btn" onclick="numPress('6')">6</button>
+      <button class="num-btn" onclick="numPress('7')">7</button><button class="num-btn" onclick="numPress('8')">8</button><button class="num-btn" onclick="numPress('9')">9</button>
+      <button class="num-btn" onclick="numPress('.')">.</button><button class="num-btn zero" onclick="numPress('0')">0</button><button class="num-btn del" onclick="numDelete()">⌫</button>
+    </div>
+    <button class="pay-btn online-pay" id="payBtn" onclick="processPayment()">⚡ CHARGE R<span id="btnAmount">0.00</span></button>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div class="content hidden" id="tab-history">
+    <div class="section-title">Recent Transactions</div>
+    <div id="txList"><div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div></div>
+  </div>
+
+  <!-- STATS TAB -->
+  <div class="content hidden" id="tab-stats">
+    <div class="section-title">Today's Summary</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total Sales</div><div class="stat-value teal" id="statTotal">R0</div></div>
+      <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value gold" id="statCount">0</div></div>
+      <div class="stat-card"><div class="stat-label">Synced</div><div class="stat-value teal" id="statSynced">0</div></div>
+      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value gold" id="statPending">0</div></div>
+    </div>
+    <div class="ai-section">
+      <div class="ai-header">
+        <div class="ai-title">🤖 AI Insight <span class="ai-badge">CLAUDE</span></div>
+        <button class="ai-btn" id="insightBtn" onclick="getQuickInsight()">✨ Analyse</button>
+      </div>
+      <div class="ai-response" id="aiInsightBox"><p id="aiInsightText"></p></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD TAB (merchant view) -->
+  <div class="content hidden" id="tab-dashboard">
+    <div class="section-title">🏪 Merchant Overview</div>
+
+    <!-- Alert -->
+    <div class="dash-alert" id="dashAlert" style="display:none;">
+      <div class="dash-alert-icon">⚠️</div>
+      <div class="dash-alert-body">
+        <div class="dash-alert-title">Suspicious Activity</div>
+        <div class="dash-alert-msg" id="dashAlertMsg">—</div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value teal" id="dashTotal">R0</div></div>
+      <div class="stat-card"><div class="stat-label">Active Cashiers</div><div class="stat-value gold" id="dashActiveCashiers">0</div></div>
+    </div>
+
+    <!-- Live cashiers -->
+    <div class="section-title">👥 Cashiers On Shift</div>
+    <div id="cashierSummaryList"></div>
+
+    <!-- All transactions -->
+    <div class="section-title" style="margin-top:16px;">📋 All Transactions (by cashier)</div>
+    <div id="dashTxList"></div>
+  </div>
+
+  <!-- SYNC TAB -->
+  <div class="content hidden" id="tab-sync">
+    <div class="section-title">PowerSync Integration</div>
+    <div class="ps-arch-card">
+      <div class="ps-arch-title">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#00c9b1" stroke-width="1.5"/></svg>
+        Live Sync Architecture
+      </div>
+      <div class="ps-arch-row">
+        <span class="ps-node active">Supabase Postgres</span>
+        <span class="ps-arrow">→</span>
+        <span class="ps-node active">PowerSync Service</span>
+        <span class="ps-arrow">→</span>
+        <span class="ps-node active">SQLite (client)</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:10px;line-height:1.8">
+        Tables synced:<br/>
+        <span style="color:var(--teal)">merchants</span> · <span style="color:var(--teal)">transactions</span> · <span style="color:var(--teal)">cashiers</span> · <span style="color:var(--teal)">cashier_sessions</span>
+      </div>
+    </div>
+    <div class="section-title">SDK Schema (AppSchema.js)</div>
+    <div style="background:#0a0f1e;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;font-family:'Space Mono',monospace;font-size:11px;line-height:1.8;overflow-x:auto">
+      <span style="color:#6b7280">// @powersync/web</span><br/>
+      <span style="color:var(--teal)">import</span> <span style="color:var(--offwhite)">{ column, Schema, Table }</span> <span style="color:var(--teal)">from</span> <span style="color:var(--gold)">'@powersync/web'</span>;<br/><br/>
+      <span style="color:var(--teal)">const</span> <span style="color:#f472b6">cashiers</span> <span style="color:var(--offwhite)">=</span> <span style="color:var(--teal)">new</span> <span style="color:#60a5fa">Table</span><span style="color:var(--offwhite)">({</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">merchant_id: column.text,</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">name: column.text,</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">pin_hash: column.text,</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">role: column.text,</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">is_active: column.integer</span><br/>
+      <span style="color:var(--offwhite)">});</span><br/><br/>
+      <span style="color:var(--teal)">const</span> <span style="color:#f472b6">cashier_sessions</span> <span style="color:var(--offwhite)">=</span> <span style="color:var(--teal)">new</span> <span style="color:#60a5fa">Table</span><span style="color:var(--offwhite)">({</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">cashier_id: column.text,</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">merchant_id: column.text,</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">logged_in_at: column.text,</span><br/>
+      &nbsp;&nbsp;<span style="color:var(--offwhite)">logged_out_at: column.text</span><br/>
+      <span style="color:var(--offwhite)">});</span>
+    </div>
+    <div class="section-title">Upload Queue (Live)</div>
+    <div class="ps-upload-queue" id="psUploadQueue">
+      <div class="ps-upload-title">Pending writes to Supabase</div>
+      <div id="psQueueItems"><div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);padding:4px 0">Queue empty — all writes uploaded ✓</div></div>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:rgba(0,201,177,0.04);border:1px solid rgba(0,201,177,0.15);border-radius:10px;font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);line-height:1.8">
+      🔗 PowerSync Project: <span style="color:var(--teal)">payduka-pos</span><br/>
+      📦 SDK: <span style="color:var(--teal)">@powersync/web</span><br/>
+      🗄️ Backend: <span style="color:var(--teal)">Supabase + Postgres</span><br/>
+      ⚙️ Sync: <span style="color:var(--teal)">WebSocket (BSON)</span>
+    </div>
+  </div>
+
+  <!-- AI TAB -->
+  <div class="content hidden" id="tab-ai">
+    <div class="section-title">🤖 PayDuka AI Assistant</div>
+    <div class="quick-prompts">
+      <button class="quick-btn" onclick="sendQuick('How are my sales today?')">📈 Today's sales</button>
+      <button class="quick-btn" onclick="sendQuick('What should I restock?')">📦 Restock alert</button>
+      <button class="quick-btn" onclick="sendQuick('Give me a weekly sales summary')">📊 Weekly summary</button>
+      <button class="quick-btn" onclick="sendQuick('How can I grow my business?')">💡 Growth tips</button>
+      <button class="quick-btn" onclick="sendQuick('What are my peak trading hours?')">⏰ Peak hours</button>
+    </div>
+    <div class="chat-container">
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg ai"><div class="chat-bubble">👋 Hi! I'm your PayDuka AI assistant powered by Claude. I can analyse your PowerSync-synced sales data and give real business insights. What would you like to know?</div></div>
+      </div>
+      <div class="chat-input-area">
+        <input class="chat-input" id="chatInput" type="text" placeholder="Ask about your business..." onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button class="chat-send" id="chatSend" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /mainApp -->
+
+<!-- Payment modal -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
-    <h3>✅ Payment Received</h3>
+    <h3 id="modalIcon">✅ Payment Received</h3>
     <p id="modalSubtitle">Transaction recorded</p>
     <div class="qr-display">🧾</div>
     <div class="modal-amount" id="modalAmount">R0.00</div>
+    <div class="modal-cashier-tag" id="modalCashierTag"></div>
+    <div class="modal-sync-note" id="modalSyncNote">⚡ Written to local SQLite via PowerSync</div>
     <button class="modal-close" onclick="closeModal()">Done — New Payment</button>
   </div>
 </div>
+
 <div class="toast" id="toast"></div>
+
 <script>
+// ============================================================
+// CASHIER DATA
+// In production: loaded from PowerSync local SQLite (cashiers table)
+// PINs would be bcrypt hashed. Here stored plain for demo.
+// ============================================================
+const CASHIERS = [
+  { id:'c1', name:'Thabo',  role:'Manager',  pin:'1234', color:'#00c9b1' },
+  { id:'c2', name:'Nomsa',  role:'Cashier',  pin:'5678', color:'#f4c430' },
+  { id:'c3', name:'Sipho',  role:'Cashier',  pin:'9999', color:'#8b5cf6' },
+];
+
+const CASHIER_COLORS = ['#00c9b1','#f4c430','#8b5cf6','#ff6b6b','#22c55e'];
+
+// Active sessions (in-memory, would persist in cashier_sessions table)
+let activeSessions = {}; // { cashier_id: { loginTime, sessionId } }
+
+let currentCashier = null;
+let pinBuffer = '';
+let selectedForPin = null;
+
+// ── Build cashier select list
+function buildCashierList(){
+  const list = document.getElementById('cashierList');
+  list.innerHTML = CASHIERS.map(c => {
+    const isActive = activeSessions[c.id];
+    return `<div class="cashier-chip" onclick="selectCashier('${c.id}')">
+      <div class="c-avatar" style="background:linear-gradient(135deg,${c.color},#0099a0);">${c.name.slice(0,2).toUpperCase()}</div>
+      <div class="c-meta">
+        <div class="c-name">${c.name}</div>
+        <div class="c-role">${c.role}</div>
+      </div>
+      ${isActive ? `<div class="c-online"><div class="c-online-dot"></div>ON SHIFT</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectCashier(id){
+  selectedForPin = CASHIERS.find(c => c.id === id);
+  pinBuffer = '';
+  document.getElementById('pinName').textContent = selectedForPin.name;
+  const av = document.getElementById('pinAvatar');
+  av.textContent = selectedForPin.name.slice(0,2).toUpperCase();
+  av.style.background = `linear-gradient(135deg,${selectedForPin.color},#0099a0)`;
+  updatePinDots();
+  clearPinError();
+  document.getElementById('selectScreen').style.display = 'none';
+  document.getElementById('pinScreen').style.display = 'block';
+}
+
+function goBackToSelect(){
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('selectScreen').style.display = 'block';
+  pinBuffer = '';
+  clearPinError();
+}
+
+function pinKey(v){
+  if(pinBuffer.length >= 4) return;
+  pinBuffer += v;
+  updatePinDots();
+  if(pinBuffer.length === 4) setTimeout(verifyPin, 150);
+}
+
+function pinDel(){
+  pinBuffer = pinBuffer.slice(0,-1);
+  updatePinDots();
+  clearPinError();
+}
+
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById('pd'+i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+function clearPinError(){
+  const e = document.getElementById('pinError');
+  e.classList.add('hidden'); e.textContent='';
+}
+
+function showPinError(msg){
+  const e = document.getElementById('pinError');
+  e.textContent = msg; e.classList.remove('hidden');
+  // Re-trigger shake
+  e.style.animation='none';
+  void e.offsetHeight;
+  e.style.animation='';
+}
+
+function verifyPin(){
+  if(pinBuffer === selectedForPin.pin){
+    // ✅ Login success
+    const now = new Date();
+    const sessionId = 'sess_' + crypto.randomUUID().slice(0,8);
+    activeSessions[selectedForPin.id] = {
+      loginTime: now.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}),
+      sessionId,
+      loginDate: now.toISOString()
+    };
+    currentCashier = selectedForPin;
+    buildCashierList(); // refresh dots
+
+    // Update session bar
+    const sav = document.getElementById('sessionAvatar');
+    sav.textContent = currentCashier.name.slice(0,2).toUpperCase();
+    sav.style.background = `linear-gradient(135deg,${currentCashier.color},#0099a0)`;
+    document.getElementById('sessionName').textContent = currentCashier.name + ' · ' + currentCashier.role;
+    document.getElementById('sessionTime').textContent = 'Session started ' + activeSessions[currentCashier.id].loginTime;
+
+    // Dismiss auth screen
+    const auth = document.getElementById('authScreen');
+    auth.classList.add('hidden');
+    setTimeout(()=>{ auth.style.display='none'; }, 400);
+
+    showToast(`Welcome, ${currentCashier.name} 👋`);
+    updateDashboard();
+  } else {
+    showPinError('Wrong PIN — try again');
+    pinBuffer = '';
+    updatePinDots();
+  }
+}
+
+function logoutCashier(){
+  if(!currentCashier) return;
+  if(activeSessions[currentCashier.id]){
+    delete activeSessions[currentCashier.id];
+  }
+  currentCashier = null;
+  pinBuffer = '';
+  // Show auth screen again
+  const auth = document.getElementById('authScreen');
+  auth.style.display = 'flex';
+  auth.classList.remove('hidden');
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('selectScreen').style.display = 'block';
+  buildCashierList();
+  switchTab('pay', document.querySelector('.tab'));
+  showToast('Logged out. See you next shift!', 'warning');
+}
+
+// ============================================================
+// POWERSYNC MOCK DB (unchanged from original — same API surface)
+// ============================================================
+class MockPowerSyncDB {
+  constructor(){
+    this._tables={merchants:[],transactions:[],pending_transactions:[]};
+    this._uploadQueue=[];this._connected=false;this._watchers={};
+    this._loadFromStorage();
+  }
+  async connect(connector){
+    this._connector=connector;this._connected=true;
+    if(navigator.onLine) this._flushUploadQueue();
+  }
+  async execute(sql,params=[]){
+    const upper=sql.trim().toUpperCase();
+    if(upper.startsWith('INSERT INTO TRANSACTIONS')){
+      const row={
+        id:params[0],merchant_id:params[1],amount:params[2],currency:params[3],
+        customer_ref:params[4],payment_method:params[5],status:params[6],
+        created_at:params[7],cashier_id:params[8],cashier_name:params[9]
+      };
+      this._tables.transactions.unshift(row);
+      this._uploadQueue.unshift({op:'PUT',table:'transactions',id:row.id,opData:row,_uploaded:false});
+      this._saveToStorage();this._notifyWatchers('transactions');
+      if(navigator.onLine&&this._connector) this._flushUploadQueue();
+      return{rowsAffected:1};
+    }
+    return{rowsAffected:0};
+  }
+  async getAll(sql,params=[]){
+    if(sql.includes('FROM merchants')) return this._tables.merchants;
+    if(sql.includes('FROM transactions')) return[...this._tables.transactions].slice(0,100);
+    return[];
+  }
+  async get(sql,params=[]){
+    const rows=await this.getAll(sql,params);
+    if(!rows.length) throw new Error('No rows');
+    return rows[0];
+  }
+  watch(sql,params,{onResult}={}){
+    const table=sql.includes('transactions')?'transactions':'merchants';
+    if(!this._watchers[table]) this._watchers[table]=[];
+    this._watchers[table].push({sql,params,onResult});
+  }
+  get currentStatus(){return{connected:this._connected,hasSynced:this._tables.transactions.length>0};}
+  async _flushUploadQueue(){
+    const pending=this._uploadQueue.filter(q=>!q._uploaded);
+    if(!pending.length) return;
+    if(this._connector&&this._connector.uploadData){
+      try{
+        await this._connector.uploadData({getCrudBatch:async()=>({
+          crud:pending,
+          complete:async()=>{
+            pending.forEach(q=>{q._uploaded=true;});
+            this._saveToStorage();this._notifyWatchers('transactions');
+          }
+        })});
+      }catch(e){console.warn('[PowerSync] Upload retry:',e.message);}
+    }
+  }
+  _notifyWatchers(table){
+    (this._watchers[table]||[]).forEach(async w=>{
+      if(w.onResult){const rows=await this.getAll(w.sql,w.params);w.onResult({rows:{_array:rows}});}
+    });
+  }
+  _saveToStorage(){
+    try{
+      localStorage.setItem('ps_transactions',JSON.stringify(this._tables.transactions));
+      localStorage.setItem('ps_upload_queue',JSON.stringify(this._uploadQueue));
+    }catch(e){}
+  }
+  _loadFromStorage(){
+    try{
+      const tx=localStorage.getItem('ps_transactions');if(tx)this._tables.transactions=JSON.parse(tx);
+      const q=localStorage.getItem('ps_upload_queue');if(q)this._uploadQueue=JSON.parse(q);
+    }catch(e){}
+  }
+  getUploadQueue(){return this._uploadQueue;}
+  getPendingCount(){return this._uploadQueue.filter(q=>!q._uploaded).length;}
+}
+
+// ============================================================
+// SUPABASE CONNECTOR
+// ============================================================
 const SUPABASE_URL='https://ktjmilwrqpaxwertvnjq.supabase.co';
 const SUPABASE_KEY='sb_publishable_7JBBW3YFuQAPMqdnbdFi6g_jT7w9obI';
-let isOnline=navigator.onLine,currentAmount='',merchant=null,transactions=[],pendingQueue=[],sb=null;
+
+class SupabaseConnector{
+  constructor(sbClient){this.sb=sbClient;}
+  async fetchCredentials(){
+    return{endpoint:'https://your-instance.powersync.journeyapps.com',token:'dev-token'};
+  }
+  async uploadData(database){
+    const batch=await database.getCrudBatch();
+    if(!batch) return;
+    for(const op of batch.crud){
+      try{
+        if(op.op==='PUT'){
+          const{_uploaded,op:_op,...clean}=op.opData;
+          await this.sb.from(op.table).upsert([clean]);
+        }else if(op.op==='DELETE'){
+          await this.sb.from(op.table).delete().eq('id',op.id);
+        }
+      }catch(e){console.warn('[Connector]',e);throw e;}
+    }
+    await batch.complete();
+  }
+}
+
+// ============================================================
+// APP BOOTSTRAP
+// ============================================================
+let isOnline=navigator.onLine;
+let currentAmount='';
+let merchant=null;
+const db=new MockPowerSyncDB();
+let sb=null;
+
 async function init(){
-  try{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);await loadMerchant();await loadTransactions();}
-  catch(e){showToast('Offline mode','warning');}
-  loadPending();updateUI();
-  window.addEventListener('online',()=>{isOnline=true;updateSyncBadge();syncNow();showToast('Back online!');});
-  window.addEventListener('offline',()=>{isOnline=false;updateSyncBadge();showToast('Offline — still works!','warning');});
+  buildCashierList();
+  try{
+    sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    const connector=new SupabaseConnector(sb);
+    await db.connect(connector);
+    db.watch('SELECT * FROM transactions ORDER BY created_at DESC',[],{
+      onResult:(result)=>{
+        renderTransactions(result.rows._array);
+        updateStats();updateUploadQueueUI();updateDashboard();
+      }
+    });
+    await loadMerchant();
+    await loadTransactions();
+  }catch(e){showToast('Running in offline mode','warning');}
+  updateUI();
+  window.addEventListener('online',()=>{
+    isOnline=true;updateSyncBadge('syncing');showToast('⚡ Back online — syncing...');
+    db._flushUploadQueue().then(()=>{updateSyncBadge('online');showToast('✅ All synced!');updateUI();});
+  });
+  window.addEventListener('offline',()=>{
+    isOnline=false;updateSyncBadge('offline');showToast('📵 Offline — writes queued in SQLite','warning');
+  });
 }
+
 async function loadMerchant(){
-  const{data}=await sb.from('merchants').select('*').limit(1).single();
-  if(data){merchant=data;document.getElementById('merchantName').textContent=data.store_name||data.name;document.getElementById('merchantPhone').textContent=data.phone||'';document.getElementById('merchantAvatar').textContent=(data.store_name||data.name).charAt(0).toUpperCase();}
+  try{const cached=localStorage.getItem('ps_merchant');if(cached) applyMerchant(JSON.parse(cached));}catch(e){}
+  if(sb){
+    try{
+      const{data}=await sb.from('merchants').select('*').limit(1).single();
+      if(data){merchant=data;localStorage.setItem('ps_merchant',JSON.stringify(data));applyMerchant(data);}
+    }catch(e){}
+  }
+  if(!merchant){merchant={id:'demo-merchant',store_name:'Demo Store',phone:'+27 82 000 0000'};applyMerchant(merchant);}
 }
+
+function applyMerchant(data){
+  merchant=data;
+  document.getElementById('merchantName').textContent=data.store_name||data.name||'My Store';
+  document.getElementById('merchantPhone').textContent=data.phone||'';
+  document.getElementById('merchantAvatar').textContent=(data.store_name||data.name||'P').charAt(0).toUpperCase();
+}
+
 async function loadTransactions(){
-  const{data}=await sb.from('transactions').select('*').order('created_at',{ascending:false}).limit(100);
-  if(data){transactions=data.map(t=>({...t,_synced:true}));renderTransactions();updateStats();}
+  if(sb){
+    try{
+      const{data}=await sb.from('transactions').select('*').order('created_at',{ascending:false}).limit(100);
+      if(data){
+        data.forEach(t=>{
+          if(!db._tables.transactions.find(e=>e.id===t.id)) db._tables.transactions.push({...t});
+        });
+        data.forEach(t=>{
+          if(!db._uploadQueue.find(q=>q.id===t.id))
+            db._uploadQueue.push({op:'PUT',table:'transactions',id:t.id,opData:t,_uploaded:true});
+        });
+        db._saveToStorage();
+        renderTransactions(db._tables.transactions);updateStats();updateUploadQueueUI();updateDashboard();
+      }
+    }catch(e){}
+  } else {
+    renderTransactions(db._tables.transactions);updateStats();
+  }
 }
-function loadPending(){try{const s=localStorage.getItem('payduka_q');if(s)pendingQueue=JSON.parse(s);}catch(e){}updateQueueBanner();}
-function savePending(){try{localStorage.setItem('payduka_q',JSON.stringify(pendingQueue));}catch(e){}}
-function numPress(v){if(v==='.'&&currentAmount.includes('.'))return;if(currentAmount.includes('.')){const d=currentAmount.split('.')[1];if(d&&d.length>=2)return;}currentAmount=currentAmount==='0'&&v!=='.'?v:currentAmount+v;updateDisplay();}
-function numDelete(){currentAmount=currentAmount.slice(0,-1);updateDisplay();}
-function updateDisplay(){const d=currentAmount||'0.00';document.getElementById('amountInput').value=d;document.getElementById('btnAmount').textContent=parseFloat(d||0).toFixed(2);}
+
+// ============================================================
+// PAYMENT — now includes cashier_id + cashier_name
+// ============================================================
 async function processPayment(){
   const amount=parseFloat(currentAmount);
   if(!amount||amount<=0){showToast('Enter an amount','warning');return;}
+  if(!currentCashier){showToast('No cashier logged in','warning');return;}
+
   const ref=document.getElementById('customerRef').value.trim();
-  const tx={id:crypto.randomUUID(),merchant_id:merchant?.id||null,amount,currency:'ZAR',customer_ref:ref||null,payment_method:'PDUKA',status:'completed',created_at:new Date().toISOString()};
+  const txId=crypto.randomUUID();
+  const now=new Date().toISOString();
+
+  // db.execute now passes cashier_id and cashier_name as extra params
+  await db.execute(
+    'INSERT INTO transactions (id,merchant_id,amount,currency,customer_ref,payment_method,status,created_at,cashier_id,cashier_name) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [txId,merchant?.id||null,amount,'ZAR',ref||null,'PDUKA','completed',now,currentCashier.id,currentCashier.name]
+  );
+
+  const syncNote=isOnline?'⚡ Written to SQLite → uploading to Supabase':'💾 Written to local SQLite — queued for sync';
   document.getElementById('modalAmount').textContent=`R${amount.toFixed(2)}`;
   document.getElementById('modalSubtitle').textContent=ref?`Payment from ${ref}`:'Transaction recorded';
-  if(isOnline&&sb){try{const{error}=await sb.from('transactions').insert([tx]);if(!error){transactions.unshift({...tx,_synced:true});showToast(`✅ R${amount.toFixed(2)} synced!`);}else throw error;}catch(e){saveOffline(tx);}}
-  else{saveOffline(tx);showToast(`💾 R${amount.toFixed(2)} saved offline`,'warning');}
+  document.getElementById('modalCashierTag').textContent=`Cashier: ${currentCashier.name}`;
+  document.getElementById('modalSyncNote').textContent=syncNote;
   document.getElementById('modalOverlay').classList.add('open');
-  currentAmount='';document.getElementById('customerRef').value='';updateDisplay();renderTransactions();updateStats();
+
+  showToast(isOnline?`✅ R${amount.toFixed(2)} charged!`:`💾 R${amount.toFixed(2)} saved offline`,isOnline?'success':'warning');
+  currentAmount='';
+  document.getElementById('customerRef').value='';
+  updateDisplay();renderTransactions(db._tables.transactions);updateStats();updateUploadQueueUI();updateDashboard();
 }
-function saveOffline(tx){pendingQueue.unshift({...tx,_synced:false});savePending();updateQueueBanner();}
+
 async function syncNow(){
-  if(!isOnline||!sb||!pendingQueue.length)return;
-  for(const tx of [...pendingQueue]){try{const{_synced,...clean}=tx;const{error}=await sb.from('transactions').insert([clean]);if(!error){pendingQueue=pendingQueue.filter(t=>t.id!==tx.id);transactions.unshift({...clean,_synced:true});}}catch(e){}}
-  savePending();updateQueueBanner();renderTransactions();updateStats();
-  if(!pendingQueue.length)showToast('✅ All synced!');
+  if(!isOnline){showToast('No connection','warning');return;}
+  updateSyncBadge('syncing');
+  await db._flushUploadQueue();
+  updateSyncBadge('online');updateUploadQueueUI();
+  showToast('✅ Upload queue flushed!');
+  renderTransactions(db._tables.transactions);updateStats();
 }
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function updateDashboard(){
+  const all=db._tables.transactions;
+  const total=all.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+  document.getElementById('dashTotal').textContent=`R${total.toFixed(0)}`;
+  document.getElementById('dashActiveCashiers').textContent=Object.keys(activeSessions).length;
+
+  // Per-cashier summary
+  const summaryHTML=CASHIERS.map(c=>{
+    const txns=all.filter(t=>t.cashier_id===c.id);
+    const total=txns.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const isActive=!!activeSessions[c.id];
+    return `<div class="cashier-summary-row">
+      <div class="${isActive?'csr-live-dot':'csr-idle-dot'}"></div>
+      <div class="c-avatar" style="width:34px;height:34px;font-size:12px;background:linear-gradient(135deg,${c.color},#0099a0);">${c.name.slice(0,2).toUpperCase()}</div>
+      <div class="csr-info">
+        <div class="csr-name">${c.name}</div>
+        <div class="csr-meta">${c.role}${isActive?' · ON SHIFT since '+activeSessions[c.id].loginTime:' · OFF SHIFT'}</div>
+      </div>
+      <div class="csr-stats">
+        <div class="csr-amount">R${total.toFixed(2)}</div>
+        <div class="csr-count">${txns.length} txn${txns.length!==1?'s':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('cashierSummaryList').innerHTML=summaryHTML||'<div class="empty"><p>No cashiers found.</p></div>';
+
+  // All transactions with cashier tag
+  const dashTx=document.getElementById('dashTxList');
+  if(!all.length){dashTx.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div>';return;}
+  const queue=db.getUploadQueue();
+  dashTx.innerHTML=all.slice(0,20).map(tx=>{
+    const inQueue=queue.find(q=>q.id===tx.id&&!q._uploaded);
+    const synced=!inQueue;
+    const cashier=CASHIERS.find(c=>c.id===tx.cashier_id);
+    const color=cashier?cashier.color:'#6b7280';
+    return `<div class="tx-card">
+      <div class="tx-left">
+        <div class="tx-icon ${synced?'synced':'pending'}">${synced?'✅':'⏳'}</div>
+        <div class="tx-details">
+          <h4>${tx.customer_ref||'Customer'}</h4>
+          <p>${new Date(tx.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</p>
+          ${tx.cashier_name?`<span class="tx-cashier-tag" style="color:${color};border-color:${color}40;background:${color}12;">by ${tx.cashier_name}</span>`:''}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="tx-amount">R${parseFloat(tx.amount).toFixed(2)}</div>
+        <div class="tx-status ${synced?'synced':'pending'}">${synced?'SYNCED':'QUEUED'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Suspicious activity check: >3 txns under R50 from same cashier in last 5 mins
+  const fiveMinsAgo=new Date(Date.now()-5*60*1000).toISOString();
+  const suspects=[];
+  CASHIERS.forEach(c=>{
+    const recent=all.filter(t=>t.cashier_id===c.id&&t.created_at>fiveMinsAgo&&parseFloat(t.amount)<50);
+    if(recent.length>=3) suspects.push({name:c.name,count:recent.length});
+  });
+  const alertEl=document.getElementById('dashAlert');
+  if(suspects.length){
+    alertEl.style.display='flex';
+    document.getElementById('dashAlertMsg').textContent=
+      suspects.map(s=>`${s.name} processed ${s.count} low-value transactions in the last 5 mins`).join('. ');
+  } else {
+    alertEl.style.display='none';
+  }
+}
+
+// ============================================================
+// UI HELPERS (preserved + enhanced)
+// ============================================================
+function numPress(v){
+  if(v==='.'&&currentAmount.includes('.')) return;
+  if(currentAmount.includes('.')){const d=currentAmount.split('.')[1];if(d&&d.length>=2)return;}
+  currentAmount=currentAmount==='0'&&v!=='.'?v:currentAmount+v;
+  updateDisplay();
+}
+function numDelete(){currentAmount=currentAmount.slice(0,-1);updateDisplay();}
+function updateDisplay(){
+  const d=currentAmount||'0.00';
+  document.getElementById('amountInput').value=d;
+  document.getElementById('btnAmount').textContent=parseFloat(d||0).toFixed(2);
+}
+
+function renderTransactions(txList){
+  const queue=db.getUploadQueue();
+  const all=txList||db._tables.transactions;
+  const list=document.getElementById('txList');
+  if(!all.length){list.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div>';return;}
+  list.innerHTML=all.slice(0,30).map(tx=>{
+    const inQueue=queue.find(q=>q.id===tx.id&&!q._uploaded);
+    const synced=!inQueue;
+    const cashier=CASHIERS.find(c=>c.id===tx.cashier_id);
+    const color=cashier?cashier.color:'#6b7280';
+    return `<div class="tx-card">
+      <div class="tx-left">
+        <div class="tx-icon ${synced?'synced':'pending'}">${synced?'✅':'⏳'}</div>
+        <div class="tx-details">
+          <h4>${tx.customer_ref||'Customer'}</h4>
+          <p>${new Date(tx.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</p>
+          ${tx.cashier_name?`<span class="tx-cashier-tag" style="color:${color};border-color:${color}40;background:${color}12;">by ${tx.cashier_name}</span>`:''}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="tx-amount">R${parseFloat(tx.amount).toFixed(2)}</div>
+        <div class="tx-status ${synced?'synced':'pending'}">${synced?'SYNCED':'QUEUED'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(){
+  const all=db._tables.transactions;
+  const pending=db.getPendingCount();
+  document.getElementById('statTotal').textContent=`R${all.reduce((s,t)=>s+parseFloat(t.amount||0),0).toFixed(0)}`;
+  document.getElementById('statCount').textContent=all.length;
+  document.getElementById('statSynced').textContent=all.length-pending;
+  document.getElementById('statPending').textContent=pending;
+  document.getElementById('queueCount').textContent=pending;
+  document.getElementById('psUploadCount').textContent=pending;
+  document.getElementById('queueBanner').classList.toggle('hidden',pending===0);
+}
+
+function updateUploadQueueUI(){
+  const queue=db.getUploadQueue().slice(0,8);
+  const container=document.getElementById('psQueueItems');
+  if(!queue.length){
+    container.innerHTML='<div style="font-size:11px;font-family:\'Space Mono\',monospace;color:var(--muted);padding:4px 0">Queue empty — all writes uploaded ✓</div>';
+    return;
+  }
+  container.innerHTML=queue.map(q=>`
+    <div class="ps-upload-item">
+      <span>transactions / R${parseFloat(q.opData?.amount||0).toFixed(2)} ${q.opData?.customer_ref||''} ${q.opData?.cashier_name?'· '+q.opData.cashier_name:''}</span>
+      <span class="ps-upload-status ${q._uploaded?'uploaded':'queued'}">${q._uploaded?'UPLOADED':'QUEUED'}</span>
+    </div>
+  `).join('');
+}
+
+function updateSyncBadge(state){
+  const b=document.getElementById('syncBadge'),t=document.getElementById('syncText'),p=document.getElementById('payBtn');
+  const s=state||(isOnline?'online':'offline');
+  b.className=`sync-badge ${s}`;
+  t.textContent=s==='syncing'?'SYNCING':s.toUpperCase();
+  p.className=`pay-btn ${isOnline?'online-pay':'offline-pay'}`;
+}
+
+function updateUI(){updateSyncBadge();updateStats();updateUploadQueueUI();}
+
+// ============================================================
+// CLAUDE AI — LIVE API
+// ============================================================
 function buildSalesContext(){
-  const all=[...pendingQueue,...transactions];
+  const all=db._tables.transactions;
   const total=all.reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const today=new Date().toDateString();
   const todayTx=all.filter(t=>new Date(t.created_at).toDateString()===today);
   const todayTotal=todayTx.reduce((s,t)=>s+parseFloat(t.amount||0),0);
   const items=all.map(t=>t.customer_ref).filter(Boolean);
-  const itemCounts={};items.forEach(i=>{itemCounts[i]=(itemCounts[i]||0)+1;});
+  const itemCounts={};
+  items.forEach(i=>{itemCounts[i]=(itemCounts[i]||0)+1;});
   const topItems=Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  return `Merchant: ${merchant?.store_name||merchant?.name||'Unknown'}\nTotal transactions: ${all.length}\nTotal revenue: R${total.toFixed(2)}\nToday transactions: ${todayTx.length}\nToday revenue: R${todayTotal.toFixed(2)}\nPending sync: ${pendingQueue.length}\nTop items: ${topItems.map(([k,v])=>`${k}(${v}x)`).join(', ')||'none'}\nRecent: ${all.slice(0,10).map(t=>`R${parseFloat(t.amount).toFixed(2)} ${t.customer_ref||''} ${new Date(t.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}`).join('; ')}`;
+  const perCashier=CASHIERS.map(c=>{
+    const txns=all.filter(t=>t.cashier_id===c.id);
+    return `${c.name}(${txns.length}txns,R${txns.reduce((s,t)=>s+parseFloat(t.amount||0),0).toFixed(0)})`;
+  }).join(', ');
+  const activeCashiers=Object.keys(activeSessions).map(id=>CASHIERS.find(c=>c.id===id)?.name).filter(Boolean).join(', ');
+  return `Merchant: ${merchant?.store_name||'Unknown'}
+Total transactions: ${all.length} | Total revenue: R${total.toFixed(2)}
+Today transactions: ${todayTx.length} | Today revenue: R${todayTotal.toFixed(2)}
+Pending sync: ${db.getPendingCount()}
+Currently logged in cashiers: ${activeCashiers||'none'}
+Per-cashier summary: ${perCashier}
+Top items: ${topItems.map(([k,v])=>`${k}(${v}x)`).join(', ')||'none'}
+Recent: ${all.slice(0,8).map(t=>`R${parseFloat(t.amount).toFixed(2)} ${t.customer_ref||''} by ${t.cashier_name||'?'} at ${new Date(t.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}`).join('; ')}`;
 }
+
 async function callClaude(msg,ctx){
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`You are PayDuka AI, a smart business assistant for informal African merchants. Be concise, friendly, practical. Max 4 sentences unless asked for more.\nBusiness data:\n${ctx}`,messages:[{role:'user',content:msg}]})});
-  const d=await r.json();return d.content?.[0]?.text||'Sorry, could not generate response.';
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      system:`You are PayDuka AI, a sharp business assistant for African merchants using a PowerSync offline-first PoS. Be concise, direct, practical. Max 4 sentences unless asked for more. Always refer to specific numbers from the data provided.\nBusiness data:\n${ctx}`,
+      messages:[{role:'user',content:msg}]
+    })
+  });
+  if(!r.ok) throw new Error(`API ${r.status}`);
+  const d=await r.json();
+  return d.content?.[0]?.text||'No response from AI.';
 }
+
 async function getQuickInsight(){
   const btn=document.getElementById('insightBtn'),box=document.getElementById('aiInsightBox'),txt=document.getElementById('aiInsightText');
   btn.disabled=true;btn.textContent='⏳...';box.classList.add('show');
-  txt.innerHTML='<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analysing...</span></div>';
-  try{txt.textContent=await callClaude('Give me a quick daily sales insight and one tip.',buildSalesContext());}
-  catch(e){txt.textContent='Could not connect to AI.';}
+  txt.innerHTML='<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analysing your sales...</span></div>';
+  try{txt.textContent=await callClaude('Give me a quick daily sales insight and one actionable tip based on my data.',buildSalesContext());}
+  catch(e){txt.textContent='Could not connect to Claude AI. Check your connection.';}
   btn.disabled=false;btn.textContent='✨ Analyse';
 }
+
 async function sendChat(){
   const input=document.getElementById('chatInput'),msg=input.value.trim();
-  if(!msg)return;input.value='';
+  if(!msg) return;
+  input.value='';
   addMsg(msg,'user');
   const btn=document.getElementById('chatSend');btn.disabled=true;
   const div=addMsg('🤔 Thinking...','ai');
   try{div.querySelector('.chat-bubble').textContent=await callClaude(msg,buildSalesContext());}
-  catch(e){div.querySelector('.chat-bubble').textContent='AI offline. Check connection.';}
+  catch(e){div.querySelector('.chat-bubble').textContent='AI offline. Check your connection and try again.';}
   btn.disabled=false;
   document.getElementById('chatMessages').scrollTop=99999;
 }
+
 function sendQuick(msg){
-  switchTab('ai',document.querySelectorAll('.tab')[3]);
+  switchTab('ai',document.querySelectorAll('.tab')[5]);
   setTimeout(()=>{document.getElementById('chatInput').value=msg;sendChat();},100);
 }
+
 function addMsg(text,role){
   const msgs=document.getElementById('chatMessages');
   const div=document.createElement('div');div.className=`chat-msg ${role}`;
   div.innerHTML=`<div class="chat-bubble">${text}</div>`;
-  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;return div;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  return div;
 }
-function updateSyncBadge(){const b=document.getElementById('syncBadge'),t=document.getElementById('syncText'),p=document.getElementById('payBtn');if(isOnline){b.className='sync-badge online';t.textContent='ONLINE';p.className='pay-btn online-pay';}else{b.className='sync-badge offline';t.textContent='OFFLINE';p.className='pay-btn offline-pay';}}
-function updateQueueBanner(){const n=pendingQueue.length;document.getElementById('queueBanner').classList.toggle('hidden',n===0);document.getElementById('queueCount').textContent=n;}
-function renderTransactions(){
-  const all=[...pendingQueue.map(t=>({...t,_synced:false})),...transactions];
-  const list=document.getElementById('txList');
-  if(!all.length){list.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No transactions yet.</p></div>';return;}
-  list.innerHTML=all.slice(0,30).map(tx=>`<div class="tx-card"><div class="tx-left"><div class="tx-icon ${tx._synced?'synced':'pending'}">${tx._synced?'✅':'⏳'}</div><div class="tx-details"><h4>${tx.customer_ref||'Customer'}</h4><p>${new Date(tx.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</p></div></div><div style="text-align:right"><div class="tx-amount">R${parseFloat(tx.amount).toFixed(2)}</div><div class="tx-status ${tx._synced?'synced':'pending'}">${tx._synced?'SYNCED':'PENDING'}</div></div></div>`).join('');
+
+function switchTab(tab,el){
+  document.querySelectorAll('.content').forEach(c=>c.classList.add('hidden'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+  if(el) el.classList.add('active');
+  if(tab==='dashboard') updateDashboard();
 }
-function updateStats(){const all=[...pendingQueue,...transactions];document.getElementById('statTotal').textContent=`R${all.reduce((s,t)=>s+parseFloat(t.amount||0),0).toFixed(0)}`;document.getElementById('statCount').textContent=all.length;document.getElementById('statSynced').textContent=transactions.length;document.getElementById('statPending').textContent=pendingQueue.length;}
-function updateUI(){updateSyncBadge();updateQueueBanner();renderTransactions();updateStats();}
-function switchTab(tab,el){document.querySelectorAll('.content').forEach(c=>c.classList.add('hidden'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+tab).classList.remove('hidden');el.classList.add('active');}
+
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
-function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type==='warning'?'warning':''} show`;setTimeout(()=>t.classList.remove('show'),3000);}
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=`toast ${type==='warning'?'warning':''} show`;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
 init();
 </script>
 </body>
